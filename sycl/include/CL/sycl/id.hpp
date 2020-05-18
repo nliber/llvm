@@ -21,8 +21,7 @@ template <int dimensions, bool with_offset> class item;
 template <int dimensions = 1> class id : public detail::array<dimensions> {
 private:
   using base = detail::array<dimensions>;
-  static_assert(dimensions >= 1 && dimensions <= 3,
-                "id can only be 1, 2, or 3 dimensional.");
+  static_assert(dimensions >= 1, "id must be at least 1 dimensional.");
   template <int N, int val, typename T>
   using ParamTy = detail::enable_if_t<(N == val), T>;
 
@@ -34,7 +33,7 @@ private:
   class __private_class;
 
   template <typename N, typename T>
-  using EnableIfIntegral  = detail::enable_if_t<std::is_integral<N>::value, T>;
+  using EnableIfIntegral = detail::enable_if_t<std::is_integral<N>::value, T>;
   template <bool B, typename T>
   using EnableIfT = detail::conditional_t<B, T, __private_class>;
 #endif // __SYCL_DISABLE_ID_TO_INT_CONV__
@@ -42,26 +41,31 @@ private:
 public:
   id() = default;
 
+  /* id and range share the same public base (detail::array),
+   * so we can just construct id from range directly */
+  id(const range<dimensions> &range_size) : base(range_size) {}
+
   /* The following constructor is only available in the id struct
    * specialization where: dimensions==1 */
   template <int N = dimensions> id(ParamTy<N, 1, size_t> dim0) : base(dim0) {}
-
-  template <int N = dimensions>
-  id(ParamTy<N, 1, const range<dimensions>> &range_size)
-      : base(range_size.get(0)) {}
 
   template <int N = dimensions, bool with_offset = true>
   id(ParamTy<N, 1, const item<dimensions, with_offset>> &item)
       : base(item.get_id(0)) {}
 
   /* The following constructor is only available in the id struct
-   * specialization where: dimensions==2 */
-  template <int N = dimensions>
-  id(ParamTy<N, 2, size_t> dim0, size_t dim1) : base(dim0, dim1) {}
+   * specialization where: dimensions>=2 */
+  template <
+      typename Dim1, typename Dim2, typename... Dims,
+      typename = detail::enable_if_t<detail::conjunction<
+          std::is_convertible<Dim1, size_t>, std::is_convertible<Dim2, size_t>,
+          std::is_convertible<Dims, size_t>...>::value>>
+  id(Dim1 &&dim1, Dim2 &&dim2, Dims &&... dims)
+      : base(std::forward<Dim1>(dim1), std::forward<Dim2>(dim2),
+             std::forward<Dims>(dims)...) {}
 
-  template <int N = dimensions>
-  id(ParamTy<N, 2, const range<dimensions>> &range_size)
-      : base(range_size.get(0), range_size.get(1)) {}
+  /* The following constructor is only available in the id struct
+   * specialization where: dimensions==2 */
 
   template <int N = dimensions, bool with_offset = true>
   id(ParamTy<N, 2, const item<dimensions, with_offset>> &item)
@@ -69,13 +73,6 @@ public:
 
   /* The following constructor is only available in the id struct
    * specialization where: dimensions==3 */
-  template <int N = dimensions>
-  id(ParamTy<N, 3, size_t> dim0, size_t dim1, size_t dim2)
-      : base(dim0, dim1, dim2) {}
-
-  template <int N = dimensions>
-  id(ParamTy<N, 3, const range<dimensions>> &range_size)
-      : base(range_size.get(0), range_size.get(1), range_size.get(2)) {}
 
   template <int N = dimensions, bool with_offset = true>
   id(ParamTy<N, 3, const item<dimensions, with_offset>> &item)
@@ -115,14 +112,14 @@ public:
    * will be "id op size_t"*/
 #define __SYCL_GEN_OPT(op)                                                     \
   template <typename T>                                                        \
-  EnableIfIntegral <T, bool> operator op(const T &rhs) const {                 \
+  EnableIfIntegral<T, bool> operator op(const T &rhs) const {                  \
     if (this->common_array[0] != rhs)                                          \
       return false op true;                                                    \
     return true op true;                                                       \
   }                                                                            \
   template <typename T>                                                        \
-  friend EnableIfIntegral <T, bool> operator op(const T &lhs,                  \
-                                           const id<dimensions> &rhs) {        \
+  friend EnableIfIntegral<T, bool> operator op(const T &lhs,                   \
+                                               const id<dimensions> &rhs) {    \
     if (lhs != rhs.common_array[0])                                            \
       return false op true;                                                    \
     return true op true;                                                       \
@@ -150,7 +147,7 @@ public:
 #define __SYCL_GEN_OPT(op)                                                     \
   __SYCL_GEN_OPT_BASE(op)                                                      \
   template <typename T>                                                        \
-  EnableIfIntegral <T, id<dimensions>> operator op(const T &rhs) const {       \
+  EnableIfIntegral<T, id<dimensions>> operator op(const T &rhs) const {        \
     id<dimensions> result;                                                     \
     for (int i = 0; i < dimensions; ++i) {                                     \
       result.common_array[i] = this->common_array[i] op rhs;                   \
@@ -158,7 +155,7 @@ public:
     return result;                                                             \
   }                                                                            \
   template <typename T>                                                        \
-  friend EnableIfIntegral <T, id<dimensions>> operator op(                     \
+  friend EnableIfIntegral<T, id<dimensions>> operator op(                      \
       const T &lhs, const id<dimensions> &rhs) {                               \
     id<dimensions> result;                                                     \
     for (int i = 0; i < dimensions; ++i) {                                     \
@@ -250,8 +247,13 @@ size_t getOffsetForId(range<dimensions> Range, id<dimensions> Id,
 // with the exception of MSVC 1914. It doesn't support deduction guides.
 #ifdef __cpp_deduction_guides
 id(size_t)->id<1>;
-id(size_t, size_t)->id<2>;
-id(size_t, size_t, size_t)->id<3>;
+
+template <
+    typename Dim1, typename Dim2, typename... Dims,
+    typename = detail::enable_if_t<detail::conjunction<
+        std::is_convertible<Dim1, size_t>, std::is_convertible<Dim2, size_t>,
+        std::is_convertible<Dims, size_t>...>::value>>
+id(Dim1 &&, Dim2 &&, Dims &&...) -> id<2 + sizeof...(Dims)>;
 #endif
 
 } // namespace sycl
