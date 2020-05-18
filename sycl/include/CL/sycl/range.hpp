@@ -16,8 +16,7 @@ __SYCL_INLINE_NAMESPACE(cl) {
 namespace sycl {
 template <int dimensions> class id;
 template <int dimensions = 1> class range : public detail::array<dimensions> {
-  static_assert(dimensions >= 1 && dimensions <= 3,
-                "range can only be 1, 2, or 3 dimensional.");
+  static_assert(dimensions >= 1, "range must be at least 1-dimensional.");
   using base = detail::array<dimensions>;
   template <typename N, typename T>
   using IntegralType = detail::enable_if_t<std::is_integral<N>::value, T>;
@@ -29,17 +28,16 @@ public:
   range(typename std::enable_if<(N == 1), size_t>::type dim0) : base(dim0) {}
 
   /* The following constructor is only available in the range class
-  specialization where: dimensions==2 */
-  template <int N = dimensions>
-  range(typename std::enable_if<(N == 2), size_t>::type dim0, size_t dim1)
-      : base(dim0, dim1) {}
-
-  /* The following constructor is only available in the range class
-  specialization where: dimensions==3 */
-  template <int N = dimensions>
-  range(typename std::enable_if<(N == 3), size_t>::type dim0, size_t dim1,
-        size_t dim2)
-      : base(dim0, dim1, dim2) {}
+  specialization where: dimensions>=2 */
+  template <
+      typename Dim1, typename Dim2, typename... Dims,
+      typename = detail::enable_if_t<detail::conjunction<
+          std::is_convertible<Dim1, size_t>, std::is_convertible<Dim2, size_t>,
+          std::is_convertible<Dims, size_t>...>::value>>
+  range(Dim1 &&dim1, Dim2 &&dim2, Dims &&... dims)
+      : base(static_cast<size_t>(std::forward<Dim1>(dim1)),
+             static_cast<size_t>(std::forward<Dim2>(dim2)),
+             static_cast<size_t>(std::forward<Dims>(dims))...) {}
 
   explicit operator id<dimensions>() const {
     id<dimensions> result;
@@ -140,8 +138,13 @@ public:
 
 #ifdef __cpp_deduction_guides
 range(size_t)->range<1>;
-range(size_t, size_t)->range<2>;
-range(size_t, size_t, size_t)->range<3>;
+
+template <
+    typename Dim1, typename Dim2, typename... Dims,
+    typename = detail::enable_if_t<detail::conjunction<
+        std::is_convertible<Dim1, size_t>, std::is_convertible<Dim2, size_t>,
+        std::is_convertible<Dims, size_t>...>::value>>
+range(Dim1 &&, Dim2 &&, Dims &&...) -> range<2 + sizeof...(Dims)>;
 #endif
 
 } // namespace sycl

@@ -40,6 +40,14 @@ template <bool V> using bool_constant = std::integral_constant<bool, V>;
 
 template <class...> using void_t = void;
 
+template <class...> struct conjunction : std::true_type {};
+
+template <class B1> struct conjunction<B1> : B1 {};
+
+template <class B1, class... Bn>
+struct conjunction<B1, Bn...>
+    : conditional_t<bool(B1::value), conjunction<Bn...>, B1> {};
+
 // Custom type traits
 template <typename T>
 using allocator_value_type_t = typename std::allocator_traits<T>::value_type;
