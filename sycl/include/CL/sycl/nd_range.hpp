@@ -20,8 +20,7 @@ template <int dimensions = 1> class nd_range {
   range<dimensions> globalSize;
   range<dimensions> localSize;
   id<dimensions> offset;
-  static_assert(dimensions >= 1 && dimensions <= 3,
-                "nd_range can only be 1, 2, or 3 dimensional.");
+  static_assert(dimensions >= 1, "nd_range must be at least 1 dimensional.");
 
 public:
   nd_range(range<dimensions> globalSize, range<dimensions> localSize,
