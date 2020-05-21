@@ -31,9 +31,11 @@ public:
   specialization where: dimensions>=2 */
   template <
       typename Dim1, typename Dim2, typename... Dims,
-      typename = detail::enable_if_t<detail::conjunction<
-          std::is_convertible<Dim1, size_t>, std::is_convertible<Dim2, size_t>,
-          std::is_convertible<Dims, size_t>...>::value>>
+      typename = detail::enable_if_t<
+          dimensions == 2 + sizeof...(Dims) &&
+          detail::conjunction<std::is_convertible<Dim1, size_t>,
+                              std::is_convertible<Dim2, size_t>,
+                              std::is_convertible<Dims, size_t>...>::value>>
   range(Dim1 &&dim1, Dim2 &&dim2, Dims &&... dims)
       : base(static_cast<size_t>(std::forward<Dim1>(dim1)),
              static_cast<size_t>(std::forward<Dim2>(dim2)),
