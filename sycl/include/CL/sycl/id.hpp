@@ -38,6 +38,13 @@ private:
   using EnableIfT = detail::conditional_t<B, T, __private_class>;
 #endif // __SYCL_DISABLE_ID_TO_INT_CONV__
 
+  /* Helper constructor for id(item) so we can call
+   * item.get_id(Ints)... for Ints in the range [0..dimensions) */
+  template <bool with_offset, int... Ints>
+  id(const item<dimensions, with_offset> &item,
+     std::integer_sequence<int, Ints...>)
+      : base(item.get_id(Ints)...) {}
+
 public:
   id() = default;
 
@@ -45,39 +52,25 @@ public:
    * so we can just construct id from range directly */
   id(const range<dimensions> &range_size) : base(range_size) {}
 
+  template <bool with_offset = true>
+  id(const item<dimensions, with_offset> &item)
+      : id(item, std::make_integer_sequence<int, dimensions>()) {}
+
   /* The following constructor is only available in the id struct
    * specialization where: dimensions==1 */
   template <int N = dimensions> id(ParamTy<N, 1, size_t> dim0) : base(dim0) {}
 
-  template <int N = dimensions, bool with_offset = true>
-  id(ParamTy<N, 1, const item<dimensions, with_offset>> &item)
-      : base(item.get_id(0)) {}
-
   /* The following constructor is only available in the id struct
    * specialization where: dimensions>=2 */
-  template <typename Dim1, typename Dim2, typename... Dims,
-            typename = detail::enable_if_t<
-                dimensions == 2 + sizeof...(Dims) &&
-                std::is_convertible_v<Dim1, size_t> &&
-                std::is_convertible_v<Dim2, size_t> &&
-                (std::is_convertible_v<Dims, size_t> && ...)>>
+  template <
+      typename Dim1, typename Dim2, typename... Dims,
+      typename = std::enable_if_t<dimensions == 2 + sizeof...(Dims) &&
+                                  std::is_convertible_v<Dim1, size_t> &&
+                                  std::is_convertible_v<Dim2, size_t> &&
+                                  (std::is_convertible_v<Dims, size_t> && ...)>>
   id(Dim1 &&dim1, Dim2 &&dim2, Dims &&... dims)
       : base(std::forward<Dim1>(dim1), std::forward<Dim2>(dim2),
              std::forward<Dims>(dims)...) {}
-
-  /* The following constructor is only available in the id struct
-   * specialization where: dimensions==2 */
-
-  template <int N = dimensions, bool with_offset = true>
-  id(ParamTy<N, 2, const item<dimensions, with_offset>> &item)
-      : base(item.get_id(0), item.get_id(1)) {}
-
-  /* The following constructor is only available in the id struct
-   * specialization where: dimensions==3 */
-
-  template <int N = dimensions, bool with_offset = true>
-  id(ParamTy<N, 3, const item<dimensions, with_offset>> &item)
-      : base(item.get_id(0), item.get_id(1), item.get_id(2)) {}
 
   explicit operator range<dimensions>() const {
     range<dimensions> result(
@@ -249,11 +242,11 @@ size_t getOffsetForId(range<dimensions> Range, id<dimensions> Id,
 #ifdef __cpp_deduction_guides
 id(size_t)->id<1>;
 
-template <typename Dim1, typename Dim2, typename... Dims,
-          typename =
-              detail::enable_if_t<std::is_convertible_v<Dim1, size_t> &&
-                                  std::is_convertible_v<Dim2, size_t> &&
-                                  (std::is_convertible_v<Dims, size_t> && ...)>>
+template <
+    typename Dim1, typename Dim2, typename... Dims,
+    typename = std::enable_if_t<std::is_convertible_v<Dim1, size_t> &&
+                                std::is_convertible_v<Dim2, size_t> &&
+                                (std::is_convertible_v<Dims, size_t> && ...)>>
 id(Dim1 &&, Dim2 &&, Dims &&...) -> id<2 + sizeof...(Dims)>;
 #endif
 
