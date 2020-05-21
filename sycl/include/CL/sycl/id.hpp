@@ -58,10 +58,9 @@ public:
   template <typename Dim1, typename Dim2, typename... Dims,
             typename = detail::enable_if_t<
                 dimensions == 2 + sizeof...(Dims) &&
-                             detail::conjunction<
-                                 std::is_convertible<Dim1, size_t>,
-                                 std::is_convertible<Dim2, size_t>,
-                                 std::is_convertible<Dims, size_t>...>::value>>
+                std::is_convertible_v<Dim1, size_t> &&
+                std::is_convertible_v<Dim2, size_t> &&
+                (std::is_convertible_v<Dims, size_t> && ...)>>
   id(Dim1 &&dim1, Dim2 &&dim2, Dims &&... dims)
       : base(std::forward<Dim1>(dim1), std::forward<Dim2>(dim2),
              std::forward<Dims>(dims)...) {}
@@ -250,11 +249,11 @@ size_t getOffsetForId(range<dimensions> Range, id<dimensions> Id,
 #ifdef __cpp_deduction_guides
 id(size_t)->id<1>;
 
-template <
-    typename Dim1, typename Dim2, typename... Dims,
-    typename = detail::enable_if_t<detail::conjunction<
-        std::is_convertible<Dim1, size_t>, std::is_convertible<Dim2, size_t>,
-        std::is_convertible<Dims, size_t>...>::value>>
+template <typename Dim1, typename Dim2, typename... Dims,
+          typename =
+              detail::enable_if_t<std::is_convertible_v<Dim1, size_t> &&
+                                  std::is_convertible_v<Dim2, size_t> &&
+                                  (std::is_convertible_v<Dims, size_t> && ...)>>
 id(Dim1 &&, Dim2 &&, Dims &&...) -> id<2 + sizeof...(Dims)>;
 #endif
 
