@@ -41,8 +41,8 @@ private:
   /* Helper constructor for id(item) so we can call
    * item.get_id(Ints)... for Ints in the range [0..dimensions) */
   template <bool with_offset, int... Ints>
-  id(const item<dimensions, with_offset> &item,
-     std::integer_sequence<int, Ints...>)
+  explicit id(const item<dimensions, with_offset> &item,
+              std::integer_sequence<int, Ints...>)
       : base(item.get_id(Ints)...) {}
 
 public:
