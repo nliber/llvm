@@ -29,14 +29,15 @@ template <int Dims> struct ItemBase<Dims, true> {
   bool operator!=(const ItemBase &Rhs) const { return !((*this) == Rhs); }
 
   size_t get_linear_id() const {
-    if (1 == Dims) {
-      return MIndex[0] - MOffset[0];
+
+    size_t linearId = MIndex[0] - MOffset[0];
+
+    for (int dim = 1; dim != Dims; ++dim) {
+      linearId *= MExtent[dim];
+      linearId += MIndex[dim] - MOffset[dim];
     }
-    if (2 == Dims) {
-      return (MIndex[0] - MOffset[0]) * MExtent[1] + (MIndex[1] - MOffset[1]);
-    }
-    return ((MIndex[0] - MOffset[0]) * MExtent[1] * MExtent[2]) +
-           ((MIndex[1] - MOffset[1]) * MExtent[2]) + (MIndex[2] - MOffset[2]);
+
+    return linearId;
   }
 
   range<Dims> MExtent;
@@ -57,14 +58,14 @@ template <int Dims> struct ItemBase<Dims, false> {
   }
 
   size_t get_linear_id() const {
-    if (1 == Dims) {
-      return MIndex[0];
+
+    size_t linearId = MIndex[0];
+    for (int dim = 1; dim != Dims; ++dim) {
+      linearId *= MExtent[dim];
+      linearId += MIndex[dim];
     }
-    if (2 == Dims) {
-      return MIndex[0] * MExtent[1] + MIndex[1];
-    }
-    return (MIndex[0] * MExtent[1] * MExtent[2]) + (MIndex[1] * MExtent[2]) +
-           MIndex[2];
+
+    return linearId;
   }
 
   range<Dims> MExtent;
