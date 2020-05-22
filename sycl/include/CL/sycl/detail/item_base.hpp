@@ -30,9 +30,9 @@ template <int Dims> struct ItemBase<Dims, true> {
 
   size_t get_linear_id() const {
 
-    size_t linearId = MIndex[0] - MOffset[0];
+    size_t linearId = 0;
 
-    for (int dim = 1; dim != Dims; ++dim) {
+    for (int dim = 0; dim != Dims; ++dim) {
       linearId *= MExtent[dim];
       linearId += MIndex[dim] - MOffset[dim];
     }
@@ -59,8 +59,9 @@ template <int Dims> struct ItemBase<Dims, false> {
 
   size_t get_linear_id() const {
 
-    size_t linearId = MIndex[0];
-    for (int dim = 1; dim != Dims; ++dim) {
+    size_t linearId = 0;
+
+    for (int dim = 0; dim != Dims; ++dim) {
       linearId *= MExtent[dim];
       linearId += MIndex[dim];
     }
