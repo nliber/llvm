@@ -141,11 +141,14 @@ namespace __spirv {
 
 // Helper function templates to initialize and get vector component from SPIR-V
 // built-in variables
+// TODO have get##POSTFIX<3> return something reasonable
+// TODO generalize these macros for n-dimensions
 #define __SPIRV_DEFINE_INIT_AND_GET_HELPERS(POSTFIX)                           \
   template <int ID> static size_t get##POSTFIX();                              \
   template <> size_t get##POSTFIX<0>() { return __spirv_##POSTFIX##_x(); }     \
   template <> size_t get##POSTFIX<1>() { return __spirv_##POSTFIX##_y(); }     \
   template <> size_t get##POSTFIX<2>() { return __spirv_##POSTFIX##_z(); }     \
+  template <> size_t get##POSTFIX<3>() { return 1; }                           \
                                                                                \
   template <int Dim, class DstT> struct InitSizesST##POSTFIX;                  \
                                                                                \
@@ -160,6 +163,13 @@ namespace __spirv {
   template <class DstT> struct InitSizesST##POSTFIX<3, DstT> {                 \
     static DstT initSize() {                                                   \
       return {get##POSTFIX<2>(), get##POSTFIX<1>(), get##POSTFIX<0>()};        \
+    }                                                                          \
+  };                                                                           \
+                                                                               \
+  template <class DstT> struct InitSizesST##POSTFIX<4, DstT> {                 \
+    static DstT initSize() {                                                   \
+      return {get##POSTFIX<3>(), get##POSTFIX<2>(), get##POSTFIX<1>(),         \
+              get##POSTFIX<0>()};                                              \
     }                                                                          \
   };                                                                           \
                                                                                \
