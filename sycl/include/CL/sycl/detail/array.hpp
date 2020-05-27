@@ -111,6 +111,7 @@ protected:
                                               PI_INVALID_VALUE);
     }
 #endif
+    (void)dimension;
   }
 };
 
