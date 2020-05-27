@@ -111,7 +111,7 @@ public:
 #ifdef __SYCL_DEVICE_ONLY__
 
   template <int N>
-  using is_valid_dimensions = std::integral_constant<bool, (N > 0) && (N < 4)>;
+  using is_valid_dimensions = std::integral_constant<bool, (N > 0) && (N < 5)>;
 
   template <int Dims> static const id<Dims> getId() {
     static_assert(is_valid_dimensions<Dims>::value, "invalid dimensions");
