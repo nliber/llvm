@@ -22,8 +22,7 @@ template <int dimensions> class range;
 
 template <typename T, int dimensions = 1,
           typename AllocatorT = cl::sycl::buffer_allocator,
-          typename = typename std::enable_if<(dimensions > 0) &&
-                                             (dimensions <= 3)>::type>
+          typename = typename std::enable_if<(dimensions > 0)>::type>
 class buffer {
 public:
   using value_type = T;
@@ -45,9 +44,8 @@ public:
       std::is_convertible<typename std::iterator_traits<It>::iterator_category,
                           std::input_iterator_tag>::value>;
   template <typename ItA, typename ItB>
-  using EnableIfSameNonConstIterators =
-      typename std::enable_if<std::is_same<ItA, ItB>::value &&
-                              !std::is_const<ItA>::value, ItA>::type;
+  using EnableIfSameNonConstIterators = typename std::enable_if<
+      std::is_same<ItA, ItB>::value && !std::is_const<ItA>::value, ItA>::type;
 
   buffer(const range<dimensions> &bufferRange,
          const property_list &propList = {})
@@ -377,24 +375,23 @@ private:
 #ifdef __cpp_deduction_guides
 template <class InputIterator, class AllocatorT>
 buffer(InputIterator, InputIterator, AllocatorT, const property_list & = {})
-    ->buffer<typename std::iterator_traits<InputIterator>::value_type, 1,
-             AllocatorT>;
+    -> buffer<typename std::iterator_traits<InputIterator>::value_type, 1,
+              AllocatorT>;
 template <class InputIterator>
 buffer(InputIterator, InputIterator, const property_list & = {})
-    ->buffer<typename std::iterator_traits<InputIterator>::value_type, 1>;
+    -> buffer<typename std::iterator_traits<InputIterator>::value_type, 1>;
 template <class Container, class AllocatorT>
 buffer(Container &, AllocatorT, const property_list & = {})
-    ->buffer<typename Container::value_type, 1, AllocatorT>;
+    -> buffer<typename Container::value_type, 1, AllocatorT>;
 template <class Container>
 buffer(Container &, const property_list & = {})
-    ->buffer<typename Container::value_type, 1>;
+    -> buffer<typename Container::value_type, 1>;
 template <class T, int dimensions, class AllocatorT>
 buffer(const T *, const range<dimensions> &, AllocatorT,
-       const property_list & = {})
-    ->buffer<T, dimensions, AllocatorT>;
+       const property_list & = {}) -> buffer<T, dimensions, AllocatorT>;
 template <class T, int dimensions>
 buffer(const T *, const range<dimensions> &, const property_list & = {})
-    ->buffer<T, dimensions>;
+    -> buffer<T, dimensions>;
 #endif // __cpp_deduction_guides
 
 } // namespace sycl
