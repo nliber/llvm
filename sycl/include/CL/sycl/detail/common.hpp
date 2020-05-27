@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <string>
 #include <type_traits>
+#include <utility>
 
 #define STRINGIFY_LINE_HELP(s) #s
 #define STRINGIFY_LINE(s) STRINGIFY_LINE_HELP(s)
@@ -108,25 +109,26 @@ static inline std::string codeToString(cl_int code) {
 #ifndef SYCL_SUPPRESS_OCL_ERROR_REPORT
 #include <iostream>
 #define REPORT_OCL_ERR_TO_STREAM(expr)                                         \
-{                                                                              \
-  auto code = expr;                                                            \
-  if (code != CL_SUCCESS) {                                                    \
-    std::cerr << OCL_ERROR_REPORT << cl::sycl::detail::codeToString(code)      \
-      << std::endl;                                                            \
-  }                                                                            \
-}
+  {                                                                            \
+    auto code = expr;                                                          \
+    if (code != CL_SUCCESS) {                                                  \
+      std::cerr << OCL_ERROR_REPORT << cl::sycl::detail::codeToString(code)    \
+                << std::endl;                                                  \
+    }                                                                          \
+  }
 #endif
 
 #ifndef SYCL_SUPPRESS_EXCEPTIONS
 #include <CL/sycl/exception.hpp>
 
 #define REPORT_OCL_ERR_TO_EXC(expr, exc)                                       \
-{                                                                              \
-  auto code = expr;                                                            \
-  if (code != CL_SUCCESS) {                                                    \
-    throw exc(OCL_ERROR_REPORT + cl::sycl::detail::codeToString(code), code);  \
-  }                                                                            \
-}
+  {                                                                            \
+    auto code = expr;                                                          \
+    if (code != CL_SUCCESS) {                                                  \
+      throw exc(OCL_ERROR_REPORT + cl::sycl::detail::codeToString(code),       \
+                code);                                                         \
+    }                                                                          \
+  }
 #define REPORT_OCL_ERR_TO_EXC_THROW(code, exc) REPORT_OCL_ERR_TO_EXC(code, exc)
 #define REPORT_OCL_ERR_TO_EXC_BASE(code)                                       \
   REPORT_OCL_ERR_TO_EXC(code, cl::sycl::runtime_error)
@@ -183,23 +185,18 @@ template <class T> T createSyclObjFromImpl(decltype(T::impl) ImplObj) {
 
 // Produces N-dimensional object of type T whose all components are initialized
 // to given integer value.
-template <int N, template <int> class T> struct InitializedVal {
-  template <int Val> static T<N> get();
-};
+template <int N, template <int> class T> class InitializedVal {
+  // The Is parameter pack is needed
+  // to have N "Val" parameters passed (because sizeof...(Is) == N)
+  template <int Val, int... Is>
+  static T<N> get(std::integer_sequence<int, Is...>) {
+    return T<N>{(static_cast<void>(Is), Val)...};
+  }
 
-// Specialization for a one-dimensional type.
-template <template <int> class T> struct InitializedVal<1, T> {
-  template <int Val> static T<1> get() { return T<1>{Val}; }
-};
-
-// Specialization for a two-dimensional type.
-template <template <int> class T> struct InitializedVal<2, T> {
-  template <int Val> static T<2> get() { return T<2>{Val, Val}; }
-};
-
-// Specialization for a three-dimensional type.
-template <template <int> class T> struct InitializedVal<3, T> {
-  template <int Val> static T<3> get() { return T<3>{Val, Val, Val}; }
+public:
+  template <int Val> static T<N> get() {
+    return get<Val>(std::make_integer_sequence<int, N>());
+  }
 };
 
 /// Helper class for the \c NDLoop.
